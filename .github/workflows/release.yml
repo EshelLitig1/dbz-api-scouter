@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true   # opt into Node.js 24 for actions
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   build:
@@ -44,44 +44,12 @@ jobs:
         run: npm audit --audit-level=critical
         continue-on-error: true
 
+      - name: Generate icons
+        run: node scripts/generate-icons.js
+
       - name: Build Vite app
         run: npm run build
 
-      # ── Icon generation ──────────────────────────────────────────
-      - name: Generate icons (Linux / macOS)
-        if: matrix.os != 'windows-latest'
-        run: |
-          # ImageMagick is pre-installed on GitHub Actions runners
-          # PNG 256x256 (Linux AppImage)
-          magick build/icon.svg -resize 256x256 build/icon.png
-          # ICNS (macOS) — needs a set of sizes inside an iconset folder
-          mkdir -p build/icon.iconset
-          for size in 16 32 64 128 256 512; do
-            magick build/icon.svg -resize ${size}x${size} build/icon.iconset/icon_${size}x${size}.png
-            magick build/icon.svg -resize $((size*2))x$((size*2)) build/icon.iconset/icon_${size}x${size}@2x.png
-          done
-          # iconutil is macOS-only; on Linux we just need the PNG
-          if [ "${{ matrix.os }}" = "macos-latest" ]; then
-            iconutil -c icns build/icon.iconset -o build/icon.icns
-          fi
-
-      - name: Generate icons (Windows)
-        if: matrix.os == 'windows-latest'
-        shell: pwsh
-        run: |
-          # Install Inkscape via choco to convert SVG→PNG, then use ImageMagick for ICO
-          choco install inkscape -y --no-progress | Out-Null
-          $inkscape = "C:\Program Files\Inkscape\bin\inkscape.exe"
-          & $inkscape --export-filename="build\icon_256.png" --export-width=256 --export-height=256 "build\icon.svg"
-          & $inkscape --export-filename="build\icon_128.png" --export-width=128 --export-height=128 "build\icon.svg"
-          & $inkscape --export-filename="build\icon_64.png"  --export-width=64  --export-height=64  "build\icon.svg"
-          & $inkscape --export-filename="build\icon_48.png"  --export-width=48  --export-height=48  "build\icon.svg"
-          & $inkscape --export-filename="build\icon_32.png"  --export-width=32  --export-height=32  "build\icon.svg"
-          & $inkscape --export-filename="build\icon_16.png"  --export-width=16  --export-height=16  "build\icon.svg"
-          # Combine PNGs into a multi-resolution ICO using magick (ImageMagick 7)
-          magick build\icon_256.png build\icon_128.png build\icon_64.png build\icon_48.png build\icon_32.png build\icon_16.png build\icon.ico
-
-      # ── Platform packaging ────────────────────────────────────────
       - name: Install Linux system dependencies
         if: matrix.os == 'ubuntu-latest'
         run: |
