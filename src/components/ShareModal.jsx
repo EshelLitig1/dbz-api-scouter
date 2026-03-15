@@ -7,44 +7,24 @@ const METHOD_COLORS = {
   DELETE: '#ff2d00', PATCH: '#ff6b00', HEAD: '#a78bfa', OPTIONS: '#f0abfc',
 };
 
-const GIST_API = 'https://api.github.com/gists';
+// All network calls go through Electron main process (no direct fetch from renderer)
+const ALLOWED_METHODS = new Set(['GET','POST','PUT','DELETE','PATCH','HEAD','OPTIONS']);
 
-async function uploadGist(payload) {
-  const json = JSON.stringify(payload, null, 2);
-  const res = await fetch(GIST_API, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Accept': 'application/vnd.github+json' },
-    body: JSON.stringify({
-      description: `DBZ API Scouter — ${payload.name || payload.url}`,
-      public: false,
-      files: { 'dbz-scouter-request.json': { content: json } },
-    }),
-  });
-  if (!res.ok) throw new Error(`GitHub ${res.status}: ${res.statusText}`);
-  return res.json();
-}
-
-async function fetchGist(input) {
-  const match = input.match(/([0-9a-f]{20,})/i);
-  if (!match) throw new Error('No valid gist ID found in the input');
-  const res = await fetch(`https://api.github.com/gists/${match[1]}`, {
-    headers: { 'Accept': 'application/vnd.github+json' },
-  });
-  if (!res.ok) throw new Error(`Gist not found (${res.status})`);
-  const data = await res.json();
-  const content = Object.values(data.files)[0]?.content;
-  if (!content) throw new Error('Gist has no content');
-  return JSON.parse(content);
+function extractGistId(input) {
+  // Accept full URL or raw ID (strict 20-40 hex chars)
+  const match = input.match(/([0-9a-f]{20,40})/i);
+  return match ? match[1] : null;
 }
 
 function looksLikeGist(input) {
-  return input.includes('gist.github.com') || /^[0-9a-f]{20,}$/i.test(input.trim());
+  return input.includes('gist.github.com') || /^[0-9a-f]{20,40}$/i.test(input.trim());
 }
 
 function validate(payload) {
-  if (!payload?.v || !payload?.method || !payload?.url) {
-    throw new Error('Invalid scouter data format');
-  }
+  if (!payload || typeof payload !== 'object') throw new Error('Invalid data: not an object');
+  if (payload.v !== 1) throw new Error('Invalid or unsupported scouter format');
+  if (!ALLOWED_METHODS.has((payload.method || '').toUpperCase())) throw new Error('Invalid HTTP method in payload');
+  try { new URL(payload.url); } catch { throw new Error('Invalid URL in payload'); }
   return payload;
 }
 
@@ -73,7 +53,7 @@ export default function ShareModal({ mode, request, collections, onSave, onClose
     const payload = serializeRequest(request);
     setShareCode(encodeShareCode(request));
     setUploading(true);
-    uploadGist(payload)
+    window.electronAPI.uploadGist(payload)
       .then((data) => {
         setGistId(data.id);
         setGistUrl(data.html_url);
@@ -95,7 +75,9 @@ export default function ShareModal({ mode, request, collections, onSave, onClose
       let payload;
       const input = importInput.trim();
       if (looksLikeGist(input)) {
-        payload = validate(await fetchGist(input));
+        const gistId = extractGistId(input);
+        if (!gistId) throw new Error('Could not extract a valid gist ID from the input');
+        payload = validate(await window.electronAPI.fetchGist(gistId));
       } else {
         payload = validate(decodeShareCode(input));
       }

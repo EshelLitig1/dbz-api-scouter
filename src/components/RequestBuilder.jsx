@@ -57,6 +57,13 @@ export default function RequestBuilder({ tab, updateTab, onSend }) {
         </button>
       </div>
 
+      {/* HTTP warning */}
+      {tab.url && tab.url.startsWith('http://') && (
+        <div className="http-warning">
+          ⚠ Insecure connection — this request uses HTTP, not HTTPS. Your API keys and data may be visible on the network.
+        </div>
+      )}
+
       {/* Section tabs */}
       <div className="section-tabs">
         {sectionTabs.map(({ label, badge }) => (

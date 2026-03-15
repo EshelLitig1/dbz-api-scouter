@@ -1,9 +1,38 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-const SENSITIVE_HEADERS = new Set([
-  'authorization', 'x-api-key', 'api-key', 'x-auth-token', 'cookie', 'set-cookie',
-]);
+// ── Secure storage ────────────────────────────────────────────────────────
+// Uses Electron's safeStorage (OS keychain / DPAPI / libsecret) to encrypt
+// saved collections, history and environments at rest.
+// Falls back to localStorage when running outside Electron (e.g. browser dev).
+const secureStorage = {
+  getItem: async () => {
+    if (window.electronAPI?.loadStore) {
+      return window.electronAPI.loadStore();
+    }
+    return localStorage.getItem('dbz-scouter-store');
+  },
+  setItem: async (_, value) => {
+    if (window.electronAPI?.saveStore) {
+      window.electronAPI.saveStore(value);
+    } else {
+      localStorage.setItem('dbz-scouter-store', value);
+    }
+  },
+  removeItem: async () => {
+    if (window.electronAPI?.saveStore) {
+      window.electronAPI.saveStore('');
+    } else {
+      localStorage.removeItem('dbz-scouter-store');
+    }
+  },
+};
+
+// Any header whose name contains these substrings gets its value stripped on share
+const SENSITIVE_PATTERNS = [
+  'auth', 'token', 'secret', 'key', 'password', 'passwd', 'credential',
+  'cookie', 'session', 'bearer', 'private', 'access',
+];
 
 export function serializeRequest(req) {
   return {
@@ -12,9 +41,11 @@ export function serializeRequest(req) {
     method: req.method,
     url: req.url,
     params: req.params ?? [],
-    headers: (req.headers ?? []).map((h) =>
-      SENSITIVE_HEADERS.has((h.key || '').toLowerCase()) ? { ...h, value: '' } : h
-    ),
+    headers: (req.headers ?? []).map((h) => {
+      const lower = (h.key || '').toLowerCase();
+      const isSensitive = SENSITIVE_PATTERNS.some((p) => lower.includes(p));
+      return isSensitive ? { ...h, value: '' } : h;
+    }),
     body: req.body ?? '',
     bodyType: req.bodyType ?? 'json',
     auth: { type: 'none', token: '', username: '', password: '', keyName: '', keyValue: '' },
@@ -141,6 +172,7 @@ export const useAppStore = create(
     }),
     {
       name: 'dbz-scouter-store',
+      storage: secureStorage,
       partialize: (s) => ({
         collections: s.collections,
         history: s.history,
