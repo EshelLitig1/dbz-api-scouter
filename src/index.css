@@ -1,0 +1,105 @@
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --bg-void:    #050408;
+  --bg-dark:    #0a0812;
+  --bg-mid:     #120f1e;
+  --bg-panel:   #1a1428;
+  --bg-card:    #211a35;
+  --bg-hover:   #2a2245;
+
+  --orange:     #ff6b00;
+  --orange-dim: rgba(255, 107, 0, 0.35);
+  --gold:       #ffd700;
+  --gold-dim:   rgba(255, 215, 0, 0.35);
+  --blue-ki:    #00c8ff;
+  --blue-dim:   rgba(0, 200, 255, 0.25);
+  --red-blast:  #ff2d00;
+  --green-ok:   #00ff88;
+  --yellow:     #ffcc00;
+
+  --text-primary:   #f0e8ff;
+  --text-secondary: #9b8ec4;
+  --text-dim:       #4d4470;
+
+  --border:        rgba(255, 107, 0, 0.18);
+  --border-bright: rgba(255, 107, 0, 0.55);
+
+  --glow-orange: 0 0 8px rgba(255, 107, 0, 0.65), 0 0 22px rgba(255, 107, 0, 0.28);
+  --glow-gold:   0 0 8px rgba(255, 215, 0, 0.65), 0 0 22px rgba(255, 215, 0, 0.28);
+  --glow-blue:   0 0 8px rgba(0, 200, 255, 0.65), 0 0 22px rgba(0, 200, 255, 0.28);
+  --glow-green:  0 0 8px rgba(0, 255, 136, 0.65), 0 0 22px rgba(0, 255, 136, 0.28);
+  --glow-red:    0 0 8px rgba(255, 45,  0,  0.65), 0 0 22px rgba(255, 45, 0,  0.28);
+
+  --font-display: 'Bangers', cursive;
+  --font-tech:    'Orbitron', monospace;
+  --font-ui:      'Rajdhani', sans-serif;
+  --font-mono:    'Courier New', monospace;
+
+  --sidebar-width:   240px;
+  --titlebar-height: 42px;
+  --radius: 6px;
+}
+
+html, body, #root {
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg-dark);
+  color: var(--text-primary);
+  font-family: var(--font-ui);
+  font-size: 14px;
+  user-select: none;
+}
+
+::-webkit-scrollbar            { width: 5px; height: 5px; }
+::-webkit-scrollbar-track      { background: var(--bg-dark); }
+::-webkit-scrollbar-thumb      { background: var(--orange-dim); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover{ background: var(--orange); }
+
+input, textarea, select {
+  font-family: var(--font-ui);
+  font-size: 14px;
+  background: var(--bg-dark);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 6px 10px;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+input:focus, textarea:focus, select:focus {
+  border-color: var(--orange);
+  box-shadow: var(--glow-orange);
+}
+
+button {
+  font-family: var(--font-ui);
+  cursor: pointer;
+  border: none;
+  border-radius: var(--radius);
+  transition: all 0.18s;
+}
+
+/* ── Keyframes ── */
+@keyframes aura-pulse {
+  0%, 100% { opacity: 0.65; transform: scale(1); }
+  50%       { opacity: 1;    transform: scale(1.04); }
+}
+@keyframes ki-blast {
+  0%   { box-shadow: 0 0 6px var(--orange); }
+  50%  { box-shadow: 0 0 22px var(--orange), 0 0 44px var(--gold); }
+  100% { box-shadow: 0 0 6px var(--orange); }
+}
+@keyframes loading-ki {
+  0%   { width: 0%; }
+  60%  { width: 75%; }
+  100% { width: 100%; }
+}
+@keyframes flash-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1); }
+}
