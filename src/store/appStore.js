@@ -89,7 +89,7 @@ const initialTab = createTab();
 export const useAppStore = create(
   persist(
     (set) => ({
-      // Session state (not persisted — resets each launch)
+      // Tab state (persisted — restored on next launch)
       tabs: [initialTab],
       activeTabId: initialTab.id,
 
@@ -194,6 +194,9 @@ export const useAppStore = create(
         history: s.history,
         environments: s.environments,
         activeEnvId: s.activeEnvId,
+        // Persist tabs but strip transient runtime state
+        tabs: s.tabs.map((t) => ({ ...t, response: null, loading: false })),
+        activeTabId: s.activeTabId,
       }),
     }
   )
