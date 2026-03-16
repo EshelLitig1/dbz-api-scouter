@@ -86,15 +86,18 @@ jobs:
       - name: Upload artifacts to release
         shell: bash
         run: |
-          files=$(find dist-app -maxdepth 2 \( -name "*.exe" -o -name "*.dmg" -o -name "*.AppImage" -o -name "*.zip" \) 2>/dev/null)
-          if [ -z "$files" ]; then
-            echo "No artifacts found!"
-            ls -la dist-app/ || true
-            exit 1
-          fi
-          for f in $files; do
+          echo "Contents of dist-app:"
+          find dist-app -type f | head -30 || true
+          count=0
+          while IFS= read -r -d '' f; do
             echo "Uploading: $f"
             gh release upload "${{ github.ref_name }}" "$f" --clobber --repo "${{ github.repository }}"
-          done
+            count=$((count + 1))
+          done < <(find dist-app -type f \( -name "*.exe" -o -name "*.dmg" -o -name "*.AppImage" -o -name "*.zip" \) -print0)
+          if [ "$count" -eq 0 ]; then
+            echo "No artifacts found!"
+            exit 1
+          fi
+          echo "Uploaded $count artifact(s)."
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
