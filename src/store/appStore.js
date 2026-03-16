@@ -84,35 +84,32 @@ export const createTab = (overrides = {}) => ({
   ...overrides,
 });
 
-// ── Tab cache (localStorage — synchronous, always reliable) ───────────────────
-const TABS_KEY = 'dbz-scouter-tabs';
+// ── localStorage cache (synchronous, always reliable) ────────────────────────
+const CACHE_KEY = 'dbz-scouter-cache';
 
-function loadTabsCache() {
+function loadCache() {
   try {
-    const raw = localStorage.getItem(TABS_KEY);
+    const raw = localStorage.getItem(CACHE_KEY);
     if (!raw) return null;
-    const { tabs, activeTabId } = JSON.parse(raw);
-    if (!Array.isArray(tabs) || !tabs.length) return null;
-    // Reset transient state
-    return { tabs: tabs.map((t) => ({ ...t, response: null, loading: false })), activeTabId };
+    const data = JSON.parse(raw);
+    if (data.tabs) data.tabs = data.tabs.map((t) => ({ ...t, response: null, loading: false }));
+    return data;
   } catch { return null; }
 }
 
-const cachedTabs = loadTabsCache();
+const cache = loadCache();
 const initialTab = createTab();
 
 export const useAppStore = create(
   persist(
     (set) => ({
-      // Tab state — seeded from localStorage cache if available
-      tabs: cachedTabs?.tabs || [initialTab],
-      activeTabId: cachedTabs?.activeTabId || initialTab.id,
-
-      // Persisted state
-      collections: [],
-      history: [],
-      environments: [{ id: 'none', name: 'No Environment', variables: {} }],
-      activeEnvId: 'none',
+      // All state seeded from localStorage cache if available
+      tabs:        cache?.tabs        || [initialTab],
+      activeTabId: cache?.activeTabId || initialTab.id,
+      collections: cache?.collections || [],
+      history:     cache?.history     || [],
+      environments: cache?.environments || [{ id: 'none', name: 'No Environment', variables: {} }],
+      activeEnvId: cache?.activeEnvId || 'none',
 
       // Tab actions
       addTab: () => {
@@ -215,15 +212,26 @@ export const useAppStore = create(
   )
 );
 
-// Write tabs to localStorage synchronously on every change.
-// localStorage.setItem is synchronous — no async/timing issues.
+// Write full state to localStorage synchronously on every change.
+// localStorage.setItem is synchronous — guaranteed to complete before any close event.
 useAppStore.subscribe((state, prev) => {
-  if (state.tabs !== prev.tabs || state.activeTabId !== prev.activeTabId) {
+  if (
+    state.tabs        !== prev.tabs        ||
+    state.activeTabId !== prev.activeTabId ||
+    state.collections !== prev.collections ||
+    state.history     !== prev.history     ||
+    state.environments !== prev.environments ||
+    state.activeEnvId !== prev.activeEnvId
+  ) {
     try {
-      localStorage.setItem(TABS_KEY, JSON.stringify({
-        tabs: state.tabs.map((t) => ({ ...t, response: null, loading: false })),
-        activeTabId: state.activeTabId,
+      localStorage.setItem(CACHE_KEY, JSON.stringify({
+        tabs:         state.tabs.map((t) => ({ ...t, response: null, loading: false })),
+        activeTabId:  state.activeTabId,
+        collections:  state.collections,
+        history:      state.history,
+        environments: state.environments,
+        activeEnvId:  state.activeEnvId,
       }));
-    } catch { /* quota exceeded or private mode — silently ignore */ }
+    } catch { /* quota exceeded — silently ignore */ }
   }
 });
