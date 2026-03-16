@@ -12,7 +12,24 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
+  # ── Step 1: create the GitHub release once ───────────────────────────────────
+  create-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create GitHub Release
+        run: |
+          gh release create "${{ github.ref_name }}" \
+            --title "DBZ API Scouter ${{ github.ref_name }}" \
+            --generate-notes \
+            --draft=false \
+            --repo "${{ github.repository }}"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ── Step 2: build + upload artifacts (all 3 platforms in parallel) ───────────
   build:
+    needs: create-release
     strategy:
       fail-fast: false
       matrix:
@@ -28,11 +45,9 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: 'npm'
@@ -58,18 +73,28 @@ jobs:
 
       - name: Package app (Windows)
         if: matrix.os == 'windows-latest'
-        run: npx electron-builder --win --publish always
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx electron-builder --win --publish never
 
       - name: Package app (macOS)
         if: matrix.os == 'macos-latest'
-        run: npx electron-builder --mac --publish always
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx electron-builder --mac --publish never
 
       - name: Package app (Linux)
         if: matrix.os == 'ubuntu-latest'
-        run: npx electron-builder --linux --publish always
+        run: npx electron-builder --linux --publish never
+
+      - name: Upload artifacts to release
+        shell: bash
+        run: |
+          files=$(find dist-app -maxdepth 2 \( -name "*.exe" -o -name "*.dmg" -o -name "*.AppImage" -o -name "*.zip" \) 2>/dev/null)
+          if [ -z "$files" ]; then
+            echo "No artifacts found!"
+            ls -la dist-app/ || true
+            exit 1
+          fi
+          for f in $files; do
+            echo "Uploading: $f"
+            gh release upload "${{ github.ref_name }}" "$f" --clobber --repo "${{ github.repository }}"
+          done
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

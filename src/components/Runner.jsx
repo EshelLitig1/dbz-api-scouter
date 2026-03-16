@@ -76,11 +76,12 @@ export default function Runner() {
   const [delay, setDelay]         = useState(1);
 
   // Execution state
-  const [running, setRunning]     = useState(false);
-  const [progress, setProgress]   = useState(0);   // 0-100
+  const [running, setRunning]       = useState(false);
+  const [progress, setProgress]     = useState(0);   // 0-100
   const [currentIdx, setCurrentIdx] = useState(-1);
-  const [results, setResults]     = useState([]);
+  const [results, setResults]       = useState([]);
   const [expandedRow, setExpandedRow] = useState(null);
+  const [showCelebration, setShowCelebration] = useState(false);
 
   const stoppedRef = useRef(false);
   const fileInputRef = useRef();
@@ -198,9 +199,13 @@ export default function Runner() {
       }
     }
 
-    setProgress(stoppedRef.current ? progress : 100);
+    const finalProgress = stoppedRef.current ? progress : 100;
+    setProgress(finalProgress);
     setCurrentIdx(-1);
     setRunning(false);
+    if (!stoppedRef.current && rows.length > 10) {
+      setShowCelebration(true);
+    }
   };
 
   const stopRunner = () => {
@@ -433,6 +438,26 @@ export default function Runner() {
             </div>
           )}
 
+          {/* Timeline strip */}
+          {results.length > 0 && (
+            <div className="timeline-strip">
+              <span className="tl-label">TIMELINE</span>
+              <div className="tl-track">
+                {results.map((r) => (
+                  <div
+                    key={r.index}
+                    className={`tl-node ${expandedRow === r.index ? 'tl-node-active' : ''}`}
+                    style={{ background: r.error ? 'var(--red-blast)' : STATUS_COLOR(r.status) }}
+                    title={`#${r.index + 1} · ${r.error ? 'ERR' : r.status} · ${r.time}ms`}
+                    onClick={() => setExpandedRow(expandedRow === r.index ? null : r.index)}
+                  />
+                ))}
+                {running && <div className="tl-node tl-node-pending" />}
+              </div>
+              <span className="tl-count">{results.length}/{csvData?.rows.length ?? '?'}</span>
+            </div>
+          )}
+
           {/* Results table */}
           {results.length > 0 ? (
             <div className="results-table-wrap">
@@ -518,6 +543,53 @@ export default function Runner() {
           )}
         </div>
       </div>
+
+      {/* Celebration modal */}
+      {showCelebration && (
+        <div className="cel-overlay" onClick={() => setShowCelebration(false)}>
+          <div className="cel-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="cel-particles">
+              {Array.from({ length: 24 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="cel-spark"
+                  style={{
+                    '--angle': `${i * 15}deg`,
+                    '--dist': `${90 + (i % 3) * 30}px`,
+                    '--delay': `${(i % 6) * 0.08}s`,
+                    '--col': ['var(--gold)','var(--orange)','var(--blue-ki)','#fff','var(--green-ok)'][i % 5],
+                  }}
+                />
+              ))}
+            </div>
+            <div className="cel-dragon">🐉</div>
+            <div className="cel-title">MISSION COMPLETE!</div>
+            <div className="cel-power">
+              ⚡ POWER LEVEL: {(successCount * 9001 + results.length * 137).toLocaleString()} ⚡
+            </div>
+            <div className="cel-stats">
+              <div className="cel-stat-box cel-victories">
+                <span className="cel-stat-num">{successCount}</span>
+                <span className="cel-stat-lbl">VICTORIES</span>
+              </div>
+              <div className="cel-stat-box cel-defeats">
+                <span className="cel-stat-num">{failCount}</span>
+                <span className="cel-stat-lbl">DEFEATS</span>
+              </div>
+              <div className="cel-stat-box">
+                <span className="cel-stat-num">{results.length}</span>
+                <span className="cel-stat-lbl">TOTAL</span>
+              </div>
+            </div>
+            <div className="cel-rate">
+              {Math.round((successCount / results.length) * 100)}% success rate
+            </div>
+            <button className="cel-dismiss" onClick={() => setShowCelebration(false)}>
+              ⚡ ACKNOWLEDGED
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* CSV Preview */}
       {csvData && csvData.rows.length > 0 && (
