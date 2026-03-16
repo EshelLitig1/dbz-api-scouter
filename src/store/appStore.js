@@ -159,6 +159,22 @@ export const useAppStore = create(
         })),
       deleteCollection: (colId) =>
         set((s) => ({ collections: s.collections.filter((c) => c.id !== colId) })),
+      importCollection: (collection) =>
+        set((s) => {
+          const stamp = () => `${Date.now()}${Math.random().toString(36).slice(2, 6)}`;
+          const requests = collection.requests.map((r) => ({ ...r, id: stamp() }));
+          const existing = s.collections.find((c) => c.name === collection.name);
+          if (existing) {
+            return {
+              collections: s.collections.map((c) =>
+                c.id === existing.id ? { ...c, requests: [...c.requests, ...requests] } : c
+              ),
+            };
+          }
+          return {
+            collections: [...s.collections, { id: stamp(), name: collection.name, requests }],
+          };
+        }),
 
       // Environments
       setActiveEnv: (id) => set({ activeEnvId: id }),

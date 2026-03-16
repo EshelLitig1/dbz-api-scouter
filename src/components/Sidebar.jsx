@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useAppStore } from '../store/appStore';
 import ShareModal from './ShareModal';
+import { toPostman, fromPostman } from '../utils/postman';
 import './Sidebar.css';
 
 const METHOD_COLORS = {
@@ -11,8 +12,41 @@ const METHOD_COLORS = {
 export default function Sidebar({ activeTab, updateTab }) {
   const {
     collections, history, environments, activeEnvId,
-    setActiveEnv, clearHistory, deleteCollection, deleteRequest, saveRequest,
+    setActiveEnv, clearHistory, deleteCollection, deleteRequest, saveRequest, importCollection,
   } = useAppStore();
+
+  const postmanInputRef = useRef();
+
+  const exportPostman = (col) => {
+    const data = JSON.stringify(toPostman(col), null, 2);
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([data], { type: 'application/json' }));
+    a.download = `${col.name.replace(/[^a-z0-9]/gi, '_')}_postman.json`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  };
+
+  const importPostman = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const json = JSON.parse(ev.target.result);
+        const col  = fromPostman(json);
+        importCollection(col);
+        setPostmanMsg(`✓ Imported "${col.name}" — ${col.requests.length} request(s)`);
+        setTimeout(() => setPostmanMsg(''), 4000);
+      } catch (err) {
+        setPostmanMsg(`✗ ${err.message}`);
+        setTimeout(() => setPostmanMsg(''), 4000);
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const [postmanMsg, setPostmanMsg] = useState('');
 
   const [panel, setPanel]       = useState('collections');
   const [saveOpen, setSaveOpen] = useState(false);
@@ -96,6 +130,15 @@ export default function Sidebar({ activeTab, updateTab }) {
             <button className="act-btn act-share" onClick={() => { setShareTarget(null); setShareMode('import'); }}>
               ↓ IMPORT TRANSMISSION
             </button>
+            <button className="act-btn act-postman" onClick={() => postmanInputRef.current?.click()}>
+              📥 IMPORT POSTMAN
+            </button>
+            <input ref={postmanInputRef} type="file" accept=".json,application/json" style={{ display: 'none' }} onChange={importPostman} />
+            {postmanMsg && (
+              <div className={`postman-msg ${postmanMsg.startsWith('✓') ? 'postman-ok' : 'postman-err'}`}>
+                {postmanMsg}
+              </div>
+            )}
           </>
         )}
         {panel === 'history' && history.length > 0 && (
@@ -113,6 +156,7 @@ export default function Sidebar({ activeTab, updateTab }) {
                 <div className="col-header">
                   <span className="col-icon">📁</span>
                   <span className="col-name">{col.name}</span>
+                  <button className="col-export" onClick={() => exportPostman(col)} title="Export to Postman">📤</button>
                   <button className="col-del" onClick={() => deleteCollection(col.id)}>×</button>
                 </div>
                 {col.requests.map((req) => (

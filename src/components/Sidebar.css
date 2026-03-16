@@ -78,6 +78,19 @@
 .act-danger:hover { background: rgba(255,45,0,0.18); box-shadow: var(--glow-red); }
 .act-share { background: rgba(0,200,255,0.08); color: var(--blue-ki); border-color: var(--blue-dim); margin-top: 5px; }
 .act-share:hover { background: rgba(0,200,255,0.18); box-shadow: var(--glow-blue); }
+.act-postman { background: rgba(255,107,0,0.06); color: var(--orange); border-color: var(--orange-dim); margin-top: 5px; }
+.act-postman:hover { background: rgba(255,107,0,0.16); box-shadow: var(--glow-orange); }
+.postman-msg {
+  font-family: var(--font-tech);
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  padding: 6px 10px;
+  border-radius: var(--radius);
+  margin-top: 6px;
+  animation: flash-in 0.2s ease-out;
+}
+.postman-ok  { color: var(--green-ok);  background: rgba(0,255,136,0.08); border: 1px solid rgba(0,255,136,0.2); }
+.postman-err { color: var(--red-blast); background: rgba(255,45,0,0.08);  border: 1px solid rgba(255,45,0,0.2); }
 
 /* ── List ── */
 .sidebar-list { flex: 1; overflow-y: auto; }
@@ -110,6 +123,18 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.col-export {
+  background: none;
+  color: transparent;
+  font-size: 13px;
+  padding: 0 2px;
+  border-radius: 3px;
+  transition: color 0.1s;
+  margin-left: auto;
+}
+.col-header:hover .col-export { color: var(--text-dim); }
+.col-export:hover { color: var(--orange) !important; }
+
 .col-del {
   background: none;
   color: transparent;
