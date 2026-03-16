@@ -84,14 +84,29 @@ export const createTab = (overrides = {}) => ({
   ...overrides,
 });
 
+// ── Tab cache (localStorage — synchronous, always reliable) ───────────────────
+const TABS_KEY = 'dbz-scouter-tabs';
+
+function loadTabsCache() {
+  try {
+    const raw = localStorage.getItem(TABS_KEY);
+    if (!raw) return null;
+    const { tabs, activeTabId } = JSON.parse(raw);
+    if (!Array.isArray(tabs) || !tabs.length) return null;
+    // Reset transient state
+    return { tabs: tabs.map((t) => ({ ...t, response: null, loading: false })), activeTabId };
+  } catch { return null; }
+}
+
+const cachedTabs = loadTabsCache();
 const initialTab = createTab();
 
 export const useAppStore = create(
   persist(
     (set) => ({
-      // Tab state (persisted — restored on next launch)
-      tabs: [initialTab],
-      activeTabId: initialTab.id,
+      // Tab state — seeded from localStorage cache if available
+      tabs: cachedTabs?.tabs || [initialTab],
+      activeTabId: cachedTabs?.activeTabId || initialTab.id,
 
       // Persisted state
       collections: [],
@@ -194,10 +209,21 @@ export const useAppStore = create(
         history: s.history,
         environments: s.environments,
         activeEnvId: s.activeEnvId,
-        // Persist tabs but strip transient runtime state
-        tabs: s.tabs.map((t) => ({ ...t, response: null, loading: false })),
-        activeTabId: s.activeTabId,
+        // tabs are cached separately via localStorage (see subscribe below)
       }),
     }
   )
 );
+
+// Write tabs to localStorage synchronously on every change.
+// localStorage.setItem is synchronous — no async/timing issues.
+useAppStore.subscribe((state, prev) => {
+  if (state.tabs !== prev.tabs || state.activeTabId !== prev.activeTabId) {
+    try {
+      localStorage.setItem(TABS_KEY, JSON.stringify({
+        tabs: state.tabs.map((t) => ({ ...t, response: null, loading: false })),
+        activeTabId: state.activeTabId,
+      }));
+    } catch { /* quota exceeded or private mode — silently ignore */ }
+  }
+});
