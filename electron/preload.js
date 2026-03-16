@@ -1,5 +1,12 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
+// Called by App.jsx once — registers the callback to run before the window closes
+let _beforeCloseCallback = null;
+ipcRenderer.on('app-before-close', async () => {
+  if (_beforeCloseCallback) await _beforeCloseCallback();
+  ipcRenderer.send('app-save-done');
+});
+
 // Expose a minimal, explicitly-typed API surface to the renderer.
 // The renderer cannot access Node.js or Electron APIs directly.
 contextBridge.exposeInMainWorld('electronAPI', {
@@ -18,4 +25,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // GitHub Gist sharing (routed through main process)
   uploadGist: (payload)  => ipcRenderer.invoke('gist-upload', payload),
   fetchGist:  (gistId)   => ipcRenderer.invoke('gist-fetch', gistId),
+
+  // Called once by App to register the pre-close save handler
+  onBeforeClose: (cb) => { _beforeCloseCallback = cb; },
 });

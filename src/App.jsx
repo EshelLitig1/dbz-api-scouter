@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import TitleBar from './components/TitleBar';
 import Sidebar from './components/Sidebar';
 import RequestBuilder from './components/RequestBuilder';
@@ -15,6 +15,21 @@ export default function App() {
   const activeTab = useAppStore(
     (s) => s.tabs.find((t) => t.id === s.activeTabId) || s.tabs[0]
   );
+
+  // Register a pre-close save so the window waits for disk write before quitting
+  useEffect(() => {
+    window.electronAPI?.onBeforeClose(async () => {
+      const s = useAppStore.getState();
+      await window.electronAPI.saveStore(JSON.stringify({
+        collections: s.collections,
+        history:     s.history,
+        environments: s.environments,
+        activeEnvId: s.activeEnvId,
+        tabs:        s.tabs.map((t) => ({ ...t, response: null, loading: false })),
+        activeTabId: s.activeTabId,
+      }));
+    });
+  }, []);
 
   const handleSend = async () => {
     if (!activeTab || !activeTab.url) return;

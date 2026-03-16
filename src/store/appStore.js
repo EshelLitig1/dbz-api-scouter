@@ -14,7 +14,7 @@ const secureStorage = {
   },
   setItem: async (_, value) => {
     if (window.electronAPI?.saveStore) {
-      window.electronAPI.saveStore(value);
+      await window.electronAPI.saveStore(value);
     } else {
       localStorage.setItem('dbz-scouter-store', value);
     }

@@ -84,7 +84,18 @@ ipcMain.on('window-maximize', () => {
   if (mainWindow?.isMaximized()) mainWindow.unmaximize();
   else mainWindow?.maximize();
 });
-ipcMain.on('window-close', () => mainWindow?.close());
+
+// Coordinated close: ask renderer to save first, then destroy the window.
+// Falls back to force-close after 2 s in case the renderer is unresponsive.
+ipcMain.on('window-close', () => {
+  if (!mainWindow) return;
+  const fallback = setTimeout(() => mainWindow?.destroy(), 2000);
+  ipcMain.once('app-save-done', () => {
+    clearTimeout(fallback);
+    mainWindow?.destroy();
+  });
+  mainWindow.webContents.send('app-before-close');
+});
 
 /* ─────────────────────────────────────────────
    Encrypted store  (OS-level encryption via safeStorage)
