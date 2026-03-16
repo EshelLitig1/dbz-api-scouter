@@ -16,18 +16,20 @@ export default function App() {
     (s) => s.tabs.find((t) => t.id === s.activeTabId) || s.tabs[0]
   );
 
-  // Register a pre-close save so the window waits for disk write before quitting
+  // Register a pre-close save so the window waits for disk write before quitting.
+  // Must use Zustand's persist format: { state: {...}, version: 0 }
   useEffect(() => {
     window.electronAPI?.onBeforeClose(async () => {
       const s = useAppStore.getState();
-      await window.electronAPI.saveStore(JSON.stringify({
-        collections: s.collections,
-        history:     s.history,
+      const state = {
+        collections:  s.collections,
+        history:      s.history,
         environments: s.environments,
-        activeEnvId: s.activeEnvId,
-        tabs:        s.tabs.map((t) => ({ ...t, response: null, loading: false })),
-        activeTabId: s.activeTabId,
-      }));
+        activeEnvId:  s.activeEnvId,
+        tabs:         s.tabs.map((t) => ({ ...t, response: null, loading: false })),
+        activeTabId:  s.activeTabId,
+      };
+      await window.electronAPI.saveStore(JSON.stringify({ state, version: 0 }));
     });
   }, []);
 
